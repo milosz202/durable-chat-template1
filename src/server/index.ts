@@ -5,83 +5,299 @@ import {
 	routePartykitRequest,
 } from "partyserver";
 
-import type { ChatMessage, Message } from "../shared";
+type Role = "device" | "panel";
+
+type ClientState = {
+	authenticated: boolean;
+	role: Role | null;
+};
+
+type Secrets = {
+	DEVICE_TOKEN?: string;
+	PANEL_TOKEN?: string;
+};
 
 export class Chat extends Server<Env> {
 	static options = { hibernate: true };
 
-	messages = [] as ChatMessage[];
-
-	broadcastMessage(message: Message, exclude?: string[]) {
-		this.broadcast(JSON.stringify(message), exclude);
+	private sendJson(
+		connection: Connection,
+		data: unknown,
+	) {
+		connection.send(JSON.stringify(data));
 	}
 
-	onStart() {
-		// this is where you can initialize things that need to be done before the server starts
-		// for example, load previous messages from a database or a service
+	private broadcastToRole(
+		role: Role,
+		data: unknown,
+		excludeId?: string,
+	) {
+		const text = JSON.stringify(data);
 
-		// create the messages table if it doesn't exist
-		this.ctx.storage.sql.exec(
-			`CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, user TEXT, role TEXT, content TEXT)`,
-		);
+		for (const connection of this.getConnections()) {
+			if (connection.id === excludeId) {
+				continue;
+			}
 
-		// load the messages from the database
-		this.messages = this.ctx.storage.sql
-			.exec(`SELECT * FROM messages`)
-			.toArray() as ChatMessage[];
+			const state =
+				connection.state as ClientState | null;
+
+			if (
+				state?.authenticated &&
+				state.role === role
+			) {
+				connection.send(text);
+			}
+		}
+	}
+
+	private deviceOnline(
+		excludeId?: string,
+	): boolean {
+		for (const connection of this.getConnections()) {
+			if (connection.id === excludeId) {
+				continue;
+			}
+
+			const state =
+				connection.state as ClientState | null;
+
+			if (
+				state?.authenticated &&
+				state.role === "device"
+			) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	onConnect(connection: Connection) {
-		connection.send(
-			JSON.stringify({
-				type: "all",
-				messages: this.messages,
-			} satisfies Message),
-		);
+		connection.setState({
+			authenticated: false,
+			role: null,
+		} satisfies ClientState);
 	}
 
-	saveMessage(message: ChatMessage) {
-		// check if the message already exists
-		const existingMessage = this.messages.find((m) => m.id === message.id);
-		if (existingMessage) {
-			this.messages = this.messages.map((m) => {
-				if (m.id === message.id) {
-					return message;
-				}
-				return m;
+	onMessage(
+		connection: Connection,
+		message: WSMessage,
+	) {
+		if (typeof message !== "string") {
+			this.sendJson(connection, {
+				type: "error",
+				error: "text_only",
 			});
-		} else {
-			this.messages.push(message);
+
+			return;
 		}
 
-		// Use parameterized queries to prevent SQL injection
-		this.ctx.storage.sql.exec(
-			`INSERT INTO messages (id, user, role, content) VALUES (?, ?, ?, ?)
-			 ON CONFLICT (id) DO UPDATE SET content = ?`,
-			message.id,
-			message.user,
-			message.role,
-			message.content,
-			message.content,
-		);
+		let packet: any;
+
+		try {
+			packet = JSON.parse(message);
+		} catch {
+			this.sendJson(connection, {
+				type: "error",
+				error: "invalid_json",
+			});
+
+			return;
+		}
+
+		const state =
+			connection.state as ClientState | null;
+
+		// =========================================
+		// AUTORYZACJA
+		// =========================================
+
+		if (!state?.authenticated) {
+			if (packet.type !== "auth") {
+				this.sendJson(connection, {
+					type: "error",
+					error: "auth_required",
+				});
+
+				connection.close(
+					1008,
+					"Authentication required",
+				);
+
+				return;
+			}
+
+			const role: Role | null =
+				packet.role === "device" ||
+				packet.role === "panel"
+					? packet.role
+					: null;
+
+			const secrets =
+				this.env as unknown as Secrets;
+
+			const expectedToken =
+				role === "device"
+					? secrets.DEVICE_TOKEN
+					: role === "panel"
+						? secrets.PANEL_TOKEN
+						: undefined;
+
+			if (
+				!role ||
+				!expectedToken ||
+				typeof packet.token !== "string" ||
+				packet.token !== expectedToken
+			) {
+				this.sendJson(connection, {
+					type: "error",
+					error: "auth_failed",
+				});
+
+				connection.close(
+					1008,
+					"Authentication failed",
+				);
+
+				return;
+			}
+
+			connection.setState({
+				authenticated: true,
+				role,
+			} satisfies ClientState);
+
+			this.sendJson(connection, {
+				type: "auth_ok",
+				role,
+			});
+
+			if (role === "device") {
+				this.broadcastToRole(
+					"panel",
+					{
+						type: "device_status",
+						online: true,
+					},
+				);
+			}
+
+			if (role === "panel") {
+				this.sendJson(connection, {
+					type: "device_status",
+					online: this.deviceOnline(),
+				});
+			}
+
+			return;
+		}
+
+		// =========================================
+		// PANEL -> ESP32
+		// =========================================
+
+		if (
+			state.role === "panel" &&
+			packet.type === "get_data"
+		) {
+			this.broadcastToRole(
+				"device",
+				{
+					type: "get_data",
+				},
+			);
+
+			return;
+		}
+
+		if (
+			state.role === "panel" &&
+			packet.type === "command"
+		) {
+			this.broadcastToRole(
+				"device",
+				{
+					type: "command",
+					cmd: packet.cmd,
+					value: packet.value,
+				},
+			);
+
+			return;
+		}
+
+		// =========================================
+		// ESP32 -> PANEL
+		// =========================================
+
+		if (
+			state.role === "device" &&
+			packet.type === "telemetry"
+		) {
+			this.broadcastToRole(
+				"panel",
+				packet,
+			);
+
+			return;
+		}
+
+		if (
+			state.role === "device" &&
+			packet.type === "state"
+		) {
+			this.broadcastToRole(
+				"panel",
+				packet,
+			);
+
+			return;
+		}
+
+		this.sendJson(connection, {
+			type: "error",
+			error: "unsupported_message",
+		});
 	}
 
-	onMessage(connection: Connection, message: WSMessage) {
-		// let's broadcast the raw message to everyone else
-		this.broadcast(message);
+	onClose(connection: Connection) {
+		const state =
+			connection.state as ClientState | null;
 
-		// let's update our local messages store
-		const parsed = JSON.parse(message as string) as Message;
-		if (parsed.type === "add" || parsed.type === "update") {
-			this.saveMessage(parsed);
+		if (
+			state?.authenticated &&
+			state.role === "device"
+		) {
+			this.broadcastToRole(
+				"panel",
+				{
+					type: "device_status",
+					online: this.deviceOnline(
+						connection.id,
+					),
+				},
+			);
 		}
 	}
 }
 
 export default {
 	async fetch(request, env) {
+		const url = new URL(request.url);
+
+		if (url.pathname === "/health") {
+			return Response.json({
+				ok: true,
+				service: "truck-relay",
+			});
+		}
+
 		return (
-			(await routePartykitRequest(request, { ...env })) ||
+			(await routePartykitRequest(
+				request,
+				{ ...env },
+			)) ||
 			env.ASSETS.fetch(request)
 		);
 	},
