@@ -2,20 +2,28 @@
 	"compatibility_date": "2025-10-08",
 	"main": "src/server/index.ts",
 	"name": "durable-chat-template1",
+
 	"migrations": [
 		{
 			"new_sqlite_classes": ["Chat"],
 			"tag": "v1"
 		}
 	],
+
 	"assets": {
 		"directory": "./public",
 		"binding": "ASSETS",
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/health",
+			"/parties/*"
+		]
 	},
+
 	"build": {
 		"command": "esbuild src/client/index.tsx --bundle --splitting --format=esm --platform=browser --outdir=public/dist"
 	},
+
 	"durable_objects": {
 		"bindings": [
 			{
@@ -24,8 +32,10 @@
 			}
 		]
 	},
+
 	"observability": {
 		"enabled": true
 	},
+
 	"upload_source_maps": true
 }
