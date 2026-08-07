@@ -487,9 +487,19 @@ function App() {
 								marginTop: 7,
 								color: "#99999f",
 								fontSize: 13,
+								display: "flex",
+								gap: 10,
+								flexWrap: "wrap",
 							}}
 						>
-							ESP32-C3
+							<span>ESP32-C3</span>
+							<span>•</span>
+							<span>
+								Bieżąca wersja:{" "}
+								<strong style={{ color: "#f5f5f5" }}>
+									{firmwareVersion}
+								</strong>
+							</span>
 						</div>
 					</div>
 
