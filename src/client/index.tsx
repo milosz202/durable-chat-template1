@@ -12,7 +12,8 @@ const WS_URL =
 const FIRMWARE_URL =
 	"https://truck-dw9.pages.dev/firmware/sink/firmware.bin";
 
-const AVAILABLE_VERSION = "1.3.2";
+const VERSION_URL =
+	"https://truck-dw9.pages.dev/firmware/sink/version.json";
 
 type WsMessage = {
 	type?: string;
@@ -40,6 +41,9 @@ function App() {
 
 	const [status, setStatus] = useState("Niepołączony");
 	const [firmwareVersion, setFirmwareVersion] = useState("—");
+	const [availableVersion, setAvailableVersion] = useState("—");
+	const [versionLoadError, setVersionLoadError] = useState(false);
+
 	const [otaRunning, setOtaRunning] = useState(false);
 	const [otaProgress, setOtaProgress] = useState(0);
 
@@ -209,6 +213,56 @@ function App() {
 	}, []);
 
 	useEffect(() => {
+		let cancelled = false;
+
+		const loadAvailableVersion = async () => {
+			try {
+				const response = await fetch(
+					`${VERSION_URL}?t=${Date.now()}`,
+					{ cache: "no-store" },
+				);
+
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}`);
+				}
+
+				const data = (await response.json()) as {
+					version?: unknown;
+				};
+
+				if (
+					typeof data.version !== "string" ||
+					!data.version.trim()
+				) {
+					throw new Error("Brak pola version");
+				}
+
+				if (!cancelled) {
+					setAvailableVersion(data.version.trim());
+					setVersionLoadError(false);
+				}
+			} catch {
+				if (!cancelled) {
+					setAvailableVersion("—");
+					setVersionLoadError(true);
+				}
+			}
+		};
+
+		void loadAvailableVersion();
+
+		const timer = window.setInterval(
+			loadAvailableVersion,
+			60000,
+		);
+
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, []);
+
+	useEffect(() => {
 		const timer = window.setInterval(() => {
 			if (
 				lastTelemetryAt > 0 &&
@@ -252,7 +306,7 @@ function App() {
 		}
 
 		const confirmed = window.confirm(
-			`Zainstalować firmware ${AVAILABLE_VERSION}?\n\n` +
+			`Zainstalować firmware ${availableVersion}?\n\n` +
 				"ESP pobierze firmware, zapisze go i uruchomi się ponownie.",
 		);
 
@@ -268,14 +322,42 @@ function App() {
 		setStatus("Wysłano polecenie aktualizacji");
 	};
 
+	const compareVersions = (a: string, b: string) => {
+		const parse = (value: string) =>
+			value
+				.replace(/^v/i, "")
+				.split(".")
+				.map((part) => Number.parseInt(part, 10) || 0);
+
+		const av = parse(a);
+		const bv = parse(b);
+		const maxLength = Math.max(av.length, bv.length);
+
+		for (let i = 0; i < maxLength; i += 1) {
+			const left = av[i] ?? 0;
+			const right = bv[i] ?? 0;
+
+			if (left > right) return 1;
+			if (left < right) return -1;
+		}
+
+		return 0;
+	};
+
 	const cloudColor = authorized ? "#198754" : "#dc3545";
 	const deviceColor = deviceOnline ? "#198754" : "#dc3545";
 
-	const versionKnown = firmwareVersion !== "—";
-	const hasUpdate =
-		versionKnown && firmwareVersion !== AVAILABLE_VERSION;
-	const isCurrentVersion =
-		versionKnown && firmwareVersion === AVAILABLE_VERSION;
+	const deviceVersionKnown = firmwareVersion !== "—";
+	const serverVersionKnown = availableVersion !== "—";
+
+	const versionComparison =
+		deviceVersionKnown && serverVersionKnown
+			? compareVersions(firmwareVersion, availableVersion)
+			: null;
+
+	const hasUpdate = versionComparison === -1;
+	const isCurrentVersion = versionComparison === 0;
+	const serverIsOlder = versionComparison === 1;
 
 	return (
 		<div
@@ -428,11 +510,15 @@ function App() {
 								: "#555",
 					}}
 				>
-					{isCurrentVersion
-						? `MASZ AKTUALNĄ WERSJĘ ${firmwareVersion}`
-						: hasUpdate
-							? `DOSTĘPNA AKTUALIZACJA: ${firmwareVersion} → ${AVAILABLE_VERSION}`
-							: "OCZEKIWANIE NA WERSJĘ URZĄDZENIA..."}
+					{versionLoadError
+						? "BŁĄD ODCZYTU VERSION.JSON"
+						: isCurrentVersion
+							? `MASZ AKTUALNĄ WERSJĘ ${firmwareVersion}`
+							: hasUpdate
+								? `DOSTĘPNA AKTUALIZACJA: ${firmwareVersion} → ${availableVersion}`
+								: serverIsOlder
+									? `UWAGA: FIRMWARE NA SERWERZE JEST STARSZY (${availableVersion})`
+									: "OCZEKIWANIE NA INFORMACJĘ O WERSJI..."}
 				</div>
 
 				<table
@@ -469,7 +555,7 @@ function App() {
 									fontWeight: 700,
 								}}
 							>
-								{AVAILABLE_VERSION}
+								{availableVersion}
 							</td>
 						</tr>
 
@@ -518,7 +604,7 @@ function App() {
 							!authorized ||
 							!deviceOnline ||
 							otaRunning ||
-							isCurrentVersion
+							!hasUpdate
 						}
 						style={{
 							padding: "12px 20px",
@@ -528,14 +614,16 @@ function App() {
 								authorized &&
 								deviceOnline &&
 								!otaRunning &&
-								!isCurrentVersion
+								hasUpdate
 									? "pointer"
 									: "default",
 						}}
 					>
 						{isCurrentVersion
 							? "MASZ AKTUALNĄ WERSJĘ"
-							: "ZAINSTALUJ AKTUALIZACJĘ"}
+							: hasUpdate
+								? "ZAINSTALUJ AKTUALIZACJĘ"
+								: "AKTUALIZACJA NIEDOSTĘPNA"}
 					</button>
 				</div>
 
@@ -549,6 +637,8 @@ function App() {
 					}}
 				>
 					Firmware: {FIRMWARE_URL}
+					<br />
+					Wersja: {VERSION_URL}
 				</p>
 			</div>
 
