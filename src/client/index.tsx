@@ -271,6 +271,12 @@ function App() {
 	const cloudColor = authorized ? "#198754" : "#dc3545";
 	const deviceColor = deviceOnline ? "#198754" : "#dc3545";
 
+	const versionKnown = firmwareVersion !== "—";
+	const hasUpdate =
+		versionKnown && firmwareVersion !== AVAILABLE_VERSION;
+	const isCurrentVersion =
+		versionKnown && firmwareVersion === AVAILABLE_VERSION;
+
 	return (
 		<div
 			style={{
@@ -404,6 +410,31 @@ function App() {
 			>
 				<h2 style={{ marginTop: 0 }}>Aktualizacja</h2>
 
+				<div
+					style={{
+						padding: "12px 14px",
+						borderRadius: 8,
+						marginBottom: 16,
+						fontWeight: 700,
+						background: isCurrentVersion
+							? "#e9f7ef"
+							: hasUpdate
+								? "#fff4e5"
+								: "#f3f3f3",
+						color: isCurrentVersion
+							? "#146c43"
+							: hasUpdate
+								? "#9a6700"
+								: "#555",
+					}}
+				>
+					{isCurrentVersion
+						? `MASZ AKTUALNĄ WERSJĘ ${firmwareVersion}`
+						: hasUpdate
+							? `DOSTĘPNA AKTUALIZACJA: ${firmwareVersion} → ${AVAILABLE_VERSION}`
+							: "OCZEKIWANIE NA WERSJĘ URZĄDZENIA..."}
+				</div>
+
 				<table
 					style={{
 						width: "100%",
@@ -486,7 +517,8 @@ function App() {
 						disabled={
 							!authorized ||
 							!deviceOnline ||
-							otaRunning
+							otaRunning ||
+							isCurrentVersion
 						}
 						style={{
 							padding: "12px 20px",
@@ -495,12 +527,15 @@ function App() {
 							cursor:
 								authorized &&
 								deviceOnline &&
-								!otaRunning
+								!otaRunning &&
+								!isCurrentVersion
 									? "pointer"
 									: "default",
 						}}
 					>
-						ZAINSTALUJ AKTUALIZACJĘ
+						{isCurrentVersion
+							? "MASZ AKTUALNĄ WERSJĘ"
+							: "ZAINSTALUJ AKTUALIZACJĘ"}
 					</button>
 				</div>
 
