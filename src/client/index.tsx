@@ -362,25 +362,72 @@ function App() {
 	return (
 		<div
 			style={{
-				maxWidth: 760,
-				margin: "40px auto",
-				padding: 20,
+				minHeight: "100vh",
+				background: "#0f0f10",
+				color: "#f5f5f5",
 				fontFamily:
 					"system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
 			}}
 		>
-			<h1 style={{ marginBottom: 8 }}>TRUCK — OTA</h1>
+			<div
+				style={{
+					width: "min(1100px, calc(100% - 32px))",
+					margin: "0 auto",
+					padding: "22px 0 36px",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: 12,
+						marginBottom: 18,
+					}}
+				>
+					<div>
+						<h1
+							style={{
+								margin: 0,
+								fontSize: "clamp(26px, 4vw, 38px)",
+								lineHeight: 1.05,
+							}}
+						>
+							Truck Controller
+						</h1>
+						<div
+							style={{
+								marginTop: 6,
+								color: "#a7a7aa",
+								fontSize: 14,
+							}}
+						>
+							ESP32-C3 · OTA
+						</div>
+					</div>
 
-			<p style={{ marginTop: 0, opacity: 0.7 }}>
-				Zdalna aktualizacja sterownika ESP32-C3
-			</p>
+					<div
+						style={{
+							padding: "8px 14px",
+							borderRadius: 999,
+							background: deviceOnline ? "#123f27" : "#461d20",
+							color: deviceOnline ? "#b8f7cf" : "#ffb4b9",
+							fontWeight: 700,
+							whiteSpace: "nowrap",
+						}}
+					>
+						{deviceOnline ? "Truck online" : "Truck offline"}
+					</div>
+				</div>
 
 			<div
 				style={{
-					border: "1px solid #ccc",
-					borderRadius: 10,
-					padding: 18,
-					marginBottom: 18,
+					background: "#1f1f20",
+					border: "1px solid #343436",
+					borderRadius: 18,
+					padding: "20px",
+					marginBottom: 16,
+					boxShadow: "0 8px 28px rgba(0,0,0,.18)",
 				}}
 			>
 				<h2 style={{ marginTop: 0 }}>Połączenie</h2>
@@ -412,8 +459,13 @@ function App() {
 						autoComplete="off"
 						style={{
 							flex: "1 1 320px",
-							padding: "10px 12px",
+							padding: "12px 14px",
 							fontSize: 16,
+							background: "#111112",
+							color: "#f5f5f5",
+							border: "1px solid #454548",
+							borderRadius: 10,
+							outline: "none",
 						}}
 					/>
 
@@ -421,8 +473,13 @@ function App() {
 						type="button"
 						onClick={() => connect()}
 						style={{
-							padding: "10px 16px",
+							padding: "11px 16px",
 							cursor: "pointer",
+							border: 0,
+							borderRadius: 10,
+							background: "#f1f1f1",
+							color: "#111",
+							fontWeight: 700,
 						}}
 					>
 						Połącz
@@ -433,8 +490,13 @@ function App() {
 						onClick={disconnect}
 						disabled={!connected}
 						style={{
-							padding: "10px 16px",
+							padding: "11px 16px",
 							cursor: connected ? "pointer" : "default",
+							borderRadius: 10,
+							border: "1px solid #4a4a4d",
+							background: "#29292b",
+							color: "#f5f5f5",
+							opacity: connected ? 1 : 0.45,
 						}}
 					>
 						Rozłącz
@@ -485,9 +547,11 @@ function App() {
 
 			<div
 				style={{
-					border: "1px solid #ccc",
-					borderRadius: 10,
-					padding: 18,
+					background: "#1f1f20",
+					border: "1px solid #343436",
+					borderRadius: 18,
+					padding: "20px",
+					boxShadow: "0 8px 28px rgba(0,0,0,.18)",
 				}}
 			>
 				<h2 style={{ marginTop: 0 }}>Aktualizacja</h2>
@@ -589,9 +653,14 @@ function App() {
 						onClick={requestData}
 						disabled={!authorized}
 						style={{
-							padding: "12px 16px",
-							fontSize: 16,
+							padding: "13px 18px",
+							fontSize: 15,
 							cursor: authorized ? "pointer" : "default",
+							borderRadius: 10,
+							border: "1px solid #4a4a4d",
+							background: "#29292b",
+							color: "#f5f5f5",
+							opacity: authorized ? 1 : 0.45,
 						}}
 					>
 						Odśwież dane
@@ -607,9 +676,13 @@ function App() {
 							!hasUpdate
 						}
 						style={{
-							padding: "12px 20px",
-							fontSize: 16,
-							fontWeight: 700,
+							padding: "13px 20px",
+							fontSize: 15,
+							fontWeight: 800,
+							border: 0,
+							borderRadius: 10,
+							background: hasUpdate ? "#f2f2f2" : "#3a3a3c",
+							color: hasUpdate ? "#111" : "#8f8f94",
 							cursor:
 								authorized &&
 								deviceOnline &&
@@ -642,7 +715,15 @@ function App() {
 				</p>
 			</div>
 
-			<details style={{ marginTop: 18 }}>
+			<details
+				style={{
+					marginTop: 16,
+					background: "#1f1f20",
+					border: "1px solid #343436",
+					borderRadius: 14,
+					padding: "14px 16px",
+				}}
+			>
 				<summary>Ostatnia wiadomość diagnostyczna</summary>
 				<pre
 					style={{
@@ -650,12 +731,14 @@ function App() {
 						wordBreak: "break-word",
 						fontSize: 12,
 						padding: 10,
-						background: "#f3f3f3",
+						background: "#111112",
+						color: "#d8d8dc",
 					}}
 				>
 					{lastMessage || "Brak"}
 				</pre>
 			</details>
+			</div>
 		</div>
 	);
 }
