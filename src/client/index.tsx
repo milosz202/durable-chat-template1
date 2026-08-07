@@ -423,6 +423,7 @@ function App() {
 			<div
 				style={{
 					background: "#1f1f20",
+					color: "#f5f5f5",
 					border: "1px solid #343436",
 					borderRadius: 18,
 					padding: "20px",
@@ -430,7 +431,7 @@ function App() {
 					boxShadow: "0 8px 28px rgba(0,0,0,.18)",
 				}}
 			>
-				<h2 style={{ marginTop: 0 }}>Połączenie</h2>
+				<h2 style={{ marginTop: 0, color: "#f5f5f5" }}>Połączenie</h2>
 
 				<label
 					htmlFor="panel-token"
@@ -438,6 +439,7 @@ function App() {
 						display: "block",
 						marginBottom: 6,
 						fontWeight: 600,
+						color: "#e8e8ea",
 					}}
 				>
 					PANEL_TOKEN
@@ -503,7 +505,7 @@ function App() {
 					</button>
 				</div>
 
-				<p style={{ marginBottom: 0 }}>
+				<p style={{ marginBottom: 0, color: "#e8e8ea" }}>
 					Status: <strong>{status}</strong>
 				</p>
 
@@ -513,6 +515,7 @@ function App() {
 						gap: 20,
 						marginTop: 12,
 						flexWrap: "wrap",
+						color: "#e8e8ea",
 					}}
 				>
 					<div>
@@ -548,13 +551,14 @@ function App() {
 			<div
 				style={{
 					background: "#1f1f20",
+					color: "#f5f5f5",
 					border: "1px solid #343436",
 					borderRadius: 18,
 					padding: "20px",
 					boxShadow: "0 8px 28px rgba(0,0,0,.18)",
 				}}
 			>
-				<h2 style={{ marginTop: 0 }}>Aktualizacja</h2>
+				<h2 style={{ marginTop: 0, color: "#f5f5f5" }}>Aktualizacja</h2>
 
 				<div
 					style={{
@@ -589,6 +593,7 @@ function App() {
 					style={{
 						width: "100%",
 						borderCollapse: "collapse",
+						color: "#f5f5f5",
 						marginBottom: 18,
 					}}
 				>
@@ -705,7 +710,7 @@ function App() {
 						marginTop: 18,
 						marginBottom: 0,
 						fontSize: 13,
-						opacity: 0.7,
+						color: "#a7a7aa",
 						wordBreak: "break-all",
 					}}
 				>
@@ -719,12 +724,15 @@ function App() {
 				style={{
 					marginTop: 16,
 					background: "#1f1f20",
+					color: "#f5f5f5",
 					border: "1px solid #343436",
 					borderRadius: 14,
 					padding: "14px 16px",
 				}}
 			>
-				<summary>Ostatnia wiadomość diagnostyczna</summary>
+				<summary style={{ color: "#f5f5f5", cursor: "pointer" }}>
+				Ostatnia wiadomość diagnostyczna
+			</summary>
 				<pre
 					style={{
 						whiteSpace: "pre-wrap",
